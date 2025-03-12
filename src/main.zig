@@ -11,7 +11,7 @@ pub fn main() !void {
 
     rl.initWindow(screenWidth, screenHeight, "chip-8 in zig");
     rl.initAudioDevice();
-    rl.closeAudioDevice();
+    defer rl.closeAudioDevice();
     defer rl.closeWindow();
 
     const monitorWidth = rl.getMonitorWidth(0);
@@ -21,13 +21,6 @@ pub fn main() !void {
     rl.setWindowPosition(@divFloor(monitorWidth, 2) - screenWidth / 2, @divFloor(monitorHeight, 2) - screenHeight / 2);
 
     while (!rl.windowShouldClose()) { // Detect window close button or ESC key
-        // Update
-        //----------------------------------------------------------------------------------
-        // TODO: Update your variables here
-        //----------------------------------------------------------------------------------
-
-        // Draw
-        //----------------------------------------------------------------------------------
         rl.beginDrawing();
         defer rl.endDrawing();
 
