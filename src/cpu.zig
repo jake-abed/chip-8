@@ -157,8 +157,28 @@ fn decode(self: *Self) void {
             self.ir = @as(u16, nnn);
         },
         0xD => {
-            //const vx = self.registers[x];
-            //const vy = self.registers[y];
+            const vx = self.registers[x];
+            const vy = self.registers[y];
+            self.registers[0xF] = 0x1;
+
+            var i: usize = 0;
+            while (i < z) : (i += 1) {
+                const spr_line = self.memory[self.index + i];
+
+                var col: usize = 0;
+                while (col < 8) : (col += 1) {
+                    if (spr_line & (128 >> x) != 0) {
+                        const x_pos = (vx + x) & 64;
+                        const y_pos = (vy + i) & 32;
+
+                        self.graphics[y_pos][x_pos] ^= 1;
+
+                        if (self.graphics[y_pos][x_pos] == 0) {
+                            self.registers[0xF] = 1;
+                        }
+                    }
+                }
+            }
         },
     }
 }
