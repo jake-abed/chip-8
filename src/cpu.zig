@@ -7,7 +7,7 @@ memory: [4096]u8,
 
 // Display is essentially just 64*32 on or off pixels. Could also be
 // represented as [64][32]u8 as well.
-display: [64 * 32]u8,
+display: [32][64]u8, // [y][x]u8 for graphics
 
 // Opcode stores the two u8 memory addresses as one 16-bit opcode
 opcode: u16,
@@ -49,7 +49,7 @@ pub fn init(self: *Self) *Self {
         0xF0, 0x80, 0xF0, 0x80, 0x80, // F
     } ++ [_]u8{0} * (4096 - 512);
 
-    self.display = [_]u8{0} * 2048;
+    self.display = [_][64]u8{[_]u8{0} * 64} * 32;
 
     self.pc = 0;
 
@@ -67,7 +67,7 @@ pub fn init(self: *Self) *Self {
     return self.*;
 }
 
-fn fetch(self: *Self) u16 {
+fn fetch(self: *Self) void {
     const first_half = self.memory[self.pc];
     const second_half = self.memory[self.pc + 1];
 
@@ -75,19 +75,24 @@ fn fetch(self: *Self) u16 {
     self.pc += 2;
 }
 
-// Implement @bitCast
+// Implement @bitCast?
 fn decode(self: *Self) void {
-    const nibble: u4 = self.opcode >> 12;
-    const nnn: u12 = self.opcode >> 4;
-    const x: u4 = nnn << 8;
-    const y: u4 = (nnn & 0x0F0) >> 1;
-    const kk: u8 = nnn >> 8;
+    const nibble: u4 = @as(u4, self.opcode >> 12);
+    const nnn: u12 = @as(u12, self.opcode >> 4);
+    const x: u4 = @as(u4, nnn << 8);
+    const y: u4 = @as(u4, (nnn & 0x0F0) >> 4);
+    const z: u4 = @as(u4, nnn & 0xF);
+    const kk: u8 = @as(u8, nnn & 0xFF);
 
     switch (nibble) {
         0x0 => {
             switch (nnn) {
                 0x0E0 => {
-                    self.display = [_]u8{} * 2048;
+                    for (self.display) |row| {
+                        for (self.display[row]) |col| {
+                            self.display[row][col] = 0x0;
+                        }
+                    }
                 },
                 0x0EE => {
                     // To-do: implement return from subroutine.
@@ -98,6 +103,62 @@ fn decode(self: *Self) void {
                 },
             }
         },
-        0x1 => {},
+        0x1 => {
+            self.pc = nnn;
+        },
+        0x2 => {
+            self.stack[self.sp] = self.pc;
+            self.sp += 1;
+            self.pc = self.opcode & 0x0FFF;
+        },
+        0x3 => {
+            // Implement skip one instruction if register x == nn
+        },
+        0x4 => {
+            // Implement skip one instruction if register x != nn
+        },
+        0x5 => {
+            // Implement skip one instruction if contents of
+            // register x == register y
+        },
+        0x6 => {
+            self.registers[x] = kk; // set register x to kk
+        },
+        0x7 => {
+            self.registers[x] += kk;
+        },
+        0x8 => {
+            const vx = self.registers[x];
+            const vy = self.registers[y];
+            switch (z) {
+                0x0 => {
+                    self.registers[x] = vy;
+                },
+                0x1 => {
+                    self.registers[x] = vx | vy;
+                },
+                0x2 => {
+                    self.registers[x] = vx & vy;
+                },
+                0x3 => {
+                    self.registers[x] = vx ^ vy;
+                },
+                0x4 => {
+                    self.registers[x] +%= vy;
+                    _, const overflow = @addWithOverflow(vx, vy);
+                    if (overflow == 1) {
+                        self.registers[0xF] = 0x01;
+                    }
+                },
+                else => {},
+            }
+        },
+        0xA => {
+            self.ir = @as(u16, nnn);
+        },
+        0xD => {
+            //const vx = self.registers[x];
+            //const vy = self.registers[y];
+        },
     }
 }
