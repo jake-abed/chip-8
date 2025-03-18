@@ -1,5 +1,6 @@
 const std = @import("std");
 const rl = @import("raylib");
+const cpu = @import("cpu.zig");
 
 pub fn init() !void {}
 
@@ -8,6 +9,12 @@ pub fn main() !void {
     const screenHeight = 512;
     const pixelWidth: comptime_int = screenWidth / 64;
     const pixelHeight: comptime_int = screenHeight / 32;
+
+    const gpa = std.heap.smp_allocator;
+
+    const chip8 = try gpa.create(cpu);
+
+    chip8.init();
 
     rl.initWindow(screenWidth, screenHeight, "chip-8 in zig");
     rl.initAudioDevice();

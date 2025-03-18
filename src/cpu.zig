@@ -29,8 +29,8 @@ sound_timer: u8,
 // Variable Registers - 16 bytes 0 - 15
 registers: [16]u8,
 
-pub fn init(self: *Self) *Self {
-    self.memory = [_]u8{0} * 0x050 ++ [_]u8{
+pub fn init(self: *Self) void {
+    self.memory = [_]u8{0} ** 0x050 ++ [_]u8{
         0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
         0x20, 0x60, 0x20, 0x20, 0x70, // 1
         0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
@@ -47,24 +47,21 @@ pub fn init(self: *Self) *Self {
         0xE0, 0x90, 0x90, 0x90, 0xE0, // D
         0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
         0xF0, 0x80, 0xF0, 0x80, 0x80, // F
-    } ++ [_]u8{0} * (4096 - 512);
+    } ++ [_]u8{0} ** (4096 - 0x050 - (5 * 16));
 
-    self.display = [_][64]u8{[_]u8{0} * 64} * 32;
+    self.display = [_][64]u8{[_]u8{0} ** 64} ** 32;
 
     self.pc = 0;
 
     self.ir = 0;
 
-    self.stack = [_]u16{0} * 0x20;
+    self.stack = [_]u16{0} ** 0x20;
     self.sp = 0;
 
     self.delay_timer = 0;
     self.sound_timer = 0;
 
-    self.registers = [_]u8{0} * 0x10;
-    // We may need to set certain registers to certain values off rip.
-
-    return self.*;
+    self.registers = [_]u8{0} ** 0x10;
 }
 
 fn fetch(self: *Self) void {
