@@ -51,7 +51,7 @@ pub fn init(self: *Self) void {
 
     self.display = [_][64]u8{[_]u8{0} ** 64} ** 32;
 
-    self.pc = 0;
+    self.pc = 0x200;
 
     self.ir = 0;
 
@@ -64,30 +64,32 @@ pub fn init(self: *Self) void {
     self.registers = [_]u8{0} ** 0x10;
 }
 
-fn fetch(self: *Self) void {
-    const first_half = self.memory[self.pc];
-    const second_half = self.memory[self.pc + 1];
+pub fn fetch(self: *Self) void {
+    const first_half = @as(u16, self.memory[self.pc]);
+    const second_half = @as(u16, self.memory[self.pc + 1]);
 
-    self.opcode = (first_half << 8) | second_half;
+    self.opcode = @as(u16, (first_half << 0x08) | second_half);
     self.pc += 2;
 }
 
-// Implement @bitCast?
-fn decode(self: *Self) void {
-    const nibble: u4 = @as(u4, self.opcode >> 12);
-    const nnn: u12 = @as(u12, self.opcode >> 4);
-    const x: u4 = @as(u4, nnn << 8);
-    const y: u4 = @as(u4, (nnn & 0x0F0) >> 4);
-    const z: u4 = @as(u4, nnn & 0xF);
-    const kk: u8 = @as(u8, nnn & 0xFF);
+pub fn decode(self: *Self) void {
+    const nibble: u4 = @intCast(self.opcode >> 12);
+    const nnn: u12 = @intCast(self.opcode & 0x0FFF);
+    const x: u4 = @intCast((self.opcode & 0x0F00) >> 8);
+    const y: u4 = @intCast((self.opcode & 0x00F0) >> 4);
+    const z: u4 = @intCast(self.opcode & 0x000F);
+    const kk: u8 = @intCast(self.opcode & 0x00FF);
+
+    std.debug.print("x=0x{x}, y=0x{x}, z=0x{x} // opcode=0x{x} nibble=0x{x}\n", .{ x, y, z, self.opcode, nibble });
 
     switch (nibble) {
         0x0 => {
             switch (nnn) {
                 0x0E0 => {
-                    for (self.display) |row| {
-                        for (self.display[row]) |col| {
-                            self.display[row][col] = 0x0;
+                    std.debug.print("clearing display\n", .{});
+                    for (0.., self.display) |y_pos, row| {
+                        for (0.., row) |x_pos, _| {
+                            self.display[y_pos][x_pos] = 0x0;
                         }
                     }
                 },
@@ -156,26 +158,32 @@ fn decode(self: *Self) void {
         0xD => {
             const vx = self.registers[x];
             const vy = self.registers[y];
-            self.registers[0xF] = 0x1;
+            self.registers[0xF] = 0x0;
 
             var i: usize = 0;
             while (i < z) : (i += 1) {
-                const spr_line = self.memory[self.index + i];
+                const spr_line = self.memory[self.ir + i];
+
+                std.debug.print("{d}", .{spr_line});
 
                 var col: usize = 0;
                 while (col < 8) : (col += 1) {
-                    if (spr_line & (128 >> x) != 0) {
-                        const x_pos = (vx + x) & 64;
+                    const sig_bit: u8 = 128;
+                    if ((spr_line & (sig_bit >> @intCast(col))) != 0) {
+                        const x_pos = (vx + col) & 64;
                         const y_pos = (vy + i) & 32;
 
-                        self.graphics[y_pos][x_pos] ^= 1;
+                        std.debug.print("{d} / {d}\n", .{ x_pos, y_pos });
 
-                        if (self.graphics[y_pos][x_pos] == 0) {
+                        self.display[y_pos][x_pos] ^= 1;
+
+                        if (self.display[y_pos][x_pos] == 0) {
                             self.registers[0xF] = 1;
                         }
                     }
                 }
             }
         },
+        else => {},
     }
 }
