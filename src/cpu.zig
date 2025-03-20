@@ -80,8 +80,6 @@ pub fn decode(self: *Self) void {
     const z: u4 = @intCast(self.opcode & 0x000F);
     const kk: u8 = @intCast(self.opcode & 0x00FF);
 
-    std.debug.print("x=0x{x}, y=0x{x}, z=0x{x} // opcode=0x{x} nibble=0x{x}\n", .{ x, y, z, self.opcode, nibble });
-
     switch (nibble) {
         0x0 => {
             switch (nnn) {
@@ -164,16 +162,12 @@ pub fn decode(self: *Self) void {
             while (i < z) : (i += 1) {
                 const spr_line = self.memory[self.ir + i];
 
-                std.debug.print("{d}", .{spr_line});
-
                 var col: usize = 0;
                 while (col < 8) : (col += 1) {
                     const sig_bit: u8 = 128;
                     if ((spr_line & (sig_bit >> @intCast(col))) != 0) {
-                        const x_pos = (vx + col) & 64;
-                        const y_pos = (vy + i) & 32;
-
-                        std.debug.print("{d} / {d}\n", .{ x_pos, y_pos });
+                        const x_pos = (vx + col) % 64;
+                        const y_pos = (vy + i) % 32;
 
                         self.display[y_pos][x_pos] ^= 1;
 
