@@ -92,12 +92,10 @@ pub fn decode(self: *Self) void {
                     }
                 },
                 0x0EE => {
-                    // To-do: implement return from subroutine.
-                    return;
+                    self.sp -= 1;
+                    self.pc = self.stack[self.sp];
                 },
-                else => {
-                    return;
-                },
+                else => {},
             }
         },
         0x1 => {
@@ -158,6 +156,48 @@ pub fn decode(self: *Self) void {
                         self.registers[0xF] = 0x01;
                     }
                 },
+                0x5 => {
+                    if (vx > vy) {
+                        self.registers[0xF] = 1;
+                    } else {
+                        self.registers[0xF] = 0;
+                    }
+
+                    self.registers[x] = vx -% vy;
+                },
+                0x6 => {
+                    self.registers[x] = vy;
+                    const low_bit: u1 = @intCast(vy & 1);
+
+                    if (low_bit == 1) {
+                        self.registers[0xF] = 1;
+                    } else {
+                        self.registers[0xF] = 0;
+                    }
+
+                    self.registers[x] = @intCast(self.registers[x] >> 1);
+                },
+                0x7 => {
+                    if (vy > vx) {
+                        self.registers[0xF] = 1;
+                    } else {
+                        self.registers[0xF] = 0;
+                    }
+
+                    self.registers[x] = vy -% vx;
+                },
+                0xE => {
+                    self.registers[x] = vy;
+                    const low_bit: u1 = @intCast(vy & 1);
+
+                    if (low_bit == 1) {
+                        self.registers[0xF] = 1;
+                    } else {
+                        self.registers[0xF] = 0;
+                    }
+
+                    self.registers[x] = @intCast(self.registers[x] << 1);
+                },
                 else => {},
             }
         },
@@ -187,6 +227,40 @@ pub fn decode(self: *Self) void {
                         }
                     }
                 }
+            }
+        },
+        0xF => {
+            const vx = self.registers[x];
+            //const vy = self.registers[y];
+
+            switch (kk) {
+                0x1E => {
+                    self.ir += vx;
+                },
+                0x33 => {
+                    const first: u8 = vx / 100;
+                    const second: u8 = (vx / 10) % 10;
+                    const third: u8 = vx % 10;
+
+                    std.debug.print("{d} {d} {d} {d}\n", .{ vx, first, second, third });
+
+                    self.memory[self.ir] = first;
+                    self.memory[self.ir + 1] = second;
+                    self.memory[self.ir + 2] = third;
+                },
+                0x55 => {
+                    var i: u8 = 0;
+                    while (i <= x) : (i += 1) {
+                        self.memory[self.ir + i] = self.registers[i];
+                    }
+                },
+                0x65 => {
+                    var i: u8 = 0;
+                    while (i <= x) : (i += 1) {
+                        self.registers[i] = self.memory[self.ir + i];
+                    }
+                },
+                else => {},
             }
         },
         else => {},
