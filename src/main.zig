@@ -33,7 +33,7 @@ pub fn main() !void {
 
     chip8.init();
 
-    try loadRom("src/roms/2-ibm-logo.ch8", chip8);
+    try loadRom("src/roms/3-corax+.ch8", chip8);
 
     rl.initWindow(screenWidth, screenHeight, "chip-8 in zig");
     rl.initAudioDevice();

@@ -109,20 +109,31 @@ pub fn decode(self: *Self) void {
             self.pc = self.opcode & 0x0FFF;
         },
         0x3 => {
-            // Implement skip one instruction if register x == nn
+            const vx: u8 = self.registers[x];
+            if (vx == kk) {
+                self.pc += 2;
+            }
         },
         0x4 => {
-            // Implement skip one instruction if register x != nn
+            const vx: u8 = self.registers[x];
+            if (vx != kk) {
+                self.pc += 2;
+            }
         },
         0x5 => {
             // Implement skip one instruction if contents of
             // register x == register y
+            const vx: u8 = self.registers[x];
+            const vy: u8 = self.registers[y];
+            if (vx == vy) {
+                self.pc += 2;
+            }
         },
         0x6 => {
             self.registers[x] = kk; // set register x to kk
         },
         0x7 => {
-            self.registers[x] += kk;
+            self.registers[x] +%= kk;
         },
         0x8 => {
             const vx = self.registers[x];
