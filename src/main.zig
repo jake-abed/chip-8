@@ -1,8 +1,7 @@
 const std = @import("std");
 const rl = @import("raylib");
 const cpu = @import("cpu.zig");
-
-pub fn init() !void {}
+const KeyboardKey = rl.KeyboardKey;
 
 pub fn loadRom(file: []const u8, chip8: *cpu) !void {
     var inputFile = try std.fs.cwd().openFile(file, .{});
@@ -27,13 +26,15 @@ pub fn main() !void {
     const pixelWidth: comptime_int = screenWidth / 64;
     const pixelHeight: comptime_int = screenHeight / 32;
 
+    const keys = [16]KeyboardKey{ KeyboardKey.x, KeyboardKey.one, KeyboardKey.two, KeyboardKey.three, KeyboardKey.q, KeyboardKey.w, KeyboardKey.e, KeyboardKey.a, KeyboardKey.s, KeyboardKey.d, KeyboardKey.z, KeyboardKey.c, KeyboardKey.four, KeyboardKey.r, KeyboardKey.f, KeyboardKey.v };
+
     const gpa = std.heap.smp_allocator;
 
     const chip8 = try gpa.create(cpu);
 
-    chip8.init();
+    try chip8.init();
 
-    try loadRom("src/roms/3-corax+.ch8", chip8);
+    try loadRom("src/roms/4-flags.ch8", chip8);
 
     rl.initWindow(screenWidth, screenHeight, "chip-8 in zig");
     rl.initAudioDevice();
@@ -47,8 +48,12 @@ pub fn main() !void {
     rl.setWindowPosition(@divFloor(monitorWidth, 2) - screenWidth / 2, @divFloor(monitorHeight, 2) - screenHeight / 2);
 
     while (!rl.windowShouldClose()) { // Detect window close button or ESC key
-        chip8.fetch();
-        chip8.decode();
+        for (0..16) |i| {
+            const keyPressed: u8 = if (rl.isKeyDown(keys[i])) 1 else 0;
+            chip8.keys[i] = keyPressed;
+        }
+
+        chip8.cycle();
 
         rl.beginDrawing();
         defer rl.endDrawing();

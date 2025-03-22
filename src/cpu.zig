@@ -9,6 +9,9 @@ memory: [4096]u8,
 // represented as [64][32]u8 as well.
 display: [32][64]u8, // [y][x]u8 for graphics
 
+// Keys 0-F represented as u8 integers. 0 is off, 1+ is on.
+keys: [16]u8,
+
 // Opcode stores the two u8 memory addresses as one 16-bit opcode
 opcode: u16,
 
@@ -29,7 +32,10 @@ sound_timer: u8,
 // Variable Registers - 16 bytes 0 - 15
 registers: [16]u8,
 
-pub fn init(self: *Self) void {
+// Random Number Generator
+rand: std.Random,
+
+pub fn init(self: *Self) !void {
     self.memory = [_]u8{0} ** 0x050 ++ [_]u8{
         0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
         0x20, 0x60, 0x20, 0x20, 0x70, // 1
@@ -51,6 +57,8 @@ pub fn init(self: *Self) void {
 
     self.display = [_][64]u8{[_]u8{0} ** 64} ** 32;
 
+    self.keys = [_]u8{0} ** 16;
+
     self.pc = 0x200;
 
     self.ir = 0;
@@ -62,17 +70,33 @@ pub fn init(self: *Self) void {
     self.sound_timer = 0;
 
     self.registers = [_]u8{0} ** 0x10;
+
+    var prng = std.Random.DefaultPrng.init(blk: {
+        var seed: u64 = undefined;
+        try std.posix.getrandom(std.mem.asBytes(&seed));
+        break :blk seed;
+    });
+
+    self.rand = prng.random();
 }
 
-pub fn fetch(self: *Self) void {
+fn incrementPC(self: *Self) void {
+    self.pc += 2;
+}
+
+fn decrementPC(self: *Self) void {
+    self.pc -= 2;
+}
+
+fn fetch(self: *Self) void {
     const first_half = @as(u16, self.memory[self.pc]);
     const second_half = @as(u16, self.memory[self.pc + 1]);
 
     self.opcode = @as(u16, (first_half << 0x08) | second_half);
-    self.pc += 2;
+    self.incrementPC();
 }
 
-pub fn decode(self: *Self) void {
+fn decode(self: *Self) void {
     const nibble: u4 = @intCast(self.opcode >> 12);
     const nnn: u12 = @intCast(self.opcode & 0x0FFF);
     const x: u4 = @intCast((self.opcode & 0x0F00) >> 8);
@@ -204,6 +228,13 @@ pub fn decode(self: *Self) void {
         0xA => {
             self.ir = @as(u16, nnn);
         },
+        0xB => {
+            self.ir = @as(u16, nnn + self.registers[0]);
+        },
+        0xC => {
+            const num = self.rand.int(u8);
+            self.registers[x] = num & kk;
+        },
         0xD => {
             const vx = self.registers[x];
             const vy = self.registers[y];
@@ -231,22 +262,24 @@ pub fn decode(self: *Self) void {
         },
         0xF => {
             const vx = self.registers[x];
-            //const vy = self.registers[y];
 
             switch (kk) {
+                0x07 => {
+                    self.registers[x] = self.delay_timer;
+                },
+                0x15 => {
+                    self.delay_timer = vx;
+                },
+                0x18 => {
+                    self.sound_timer = vx;
+                },
                 0x1E => {
                     self.ir += vx;
                 },
                 0x33 => {
-                    const first: u8 = vx / 100;
-                    const second: u8 = (vx / 10) % 10;
-                    const third: u8 = vx % 10;
-
-                    std.debug.print("{d} {d} {d} {d}\n", .{ vx, first, second, third });
-
-                    self.memory[self.ir] = first;
-                    self.memory[self.ir + 1] = second;
-                    self.memory[self.ir + 2] = third;
+                    self.memory[self.ir] = vx / 100;
+                    self.memory[self.ir + 1] = (vx / 10) % 10;
+                    self.memory[self.ir + 2] = vx % 10;
                 },
                 0x55 => {
                     var i: u8 = 0;
@@ -264,5 +297,18 @@ pub fn decode(self: *Self) void {
             }
         },
         else => {},
+    }
+}
+
+pub fn cycle(self: *Self) void {
+    self.fetch();
+    self.decode();
+
+    if (self.delay_timer > 0) {
+        self.delay_timer -= 1;
+    }
+
+    if (self.sound_timer > 0) {
+        self.sound_timer -= 1;
     }
 }
