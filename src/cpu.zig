@@ -108,7 +108,6 @@ fn decode(self: *Self) void {
         0x0 => {
             switch (nnn) {
                 0x0E0 => {
-                    std.debug.print("clearing display\n", .{});
                     for (0.., self.display) |y_pos, row| {
                         for (0.., row) |x_pos, _| {
                             self.display[y_pos][x_pos] = 0x0;
@@ -260,12 +259,30 @@ fn decode(self: *Self) void {
                 }
             }
         },
+        0xE => {
+            const vx = self.registers[x];
+            if (kk == 0x9E) {
+                if (self.keys[vx] >= 1) self.incrementPC();
+            } else if (kk == 0xA1) {
+                if (self.keys[vx] == 0) self.incrementPC();
+            }
+        },
         0xF => {
             const vx = self.registers[x];
 
             switch (kk) {
                 0x07 => {
                     self.registers[x] = self.delay_timer;
+                },
+                0x0A => {
+                    const pressed = pblock: {
+                        for (0..16) |i| {
+                            if (self.keys[i] >= 1) break :pblock true;
+                        }
+                        break :pblock false;
+                    };
+
+                    if (!pressed) self.decrementPC();
                 },
                 0x15 => {
                     self.delay_timer = vx;
@@ -275,6 +292,9 @@ fn decode(self: *Self) void {
                 },
                 0x1E => {
                     self.ir += vx;
+                },
+                0x29 => {
+                    self.ir = @intCast(0x50 + vx);
                 },
                 0x33 => {
                     self.memory[self.ir] = vx / 100;

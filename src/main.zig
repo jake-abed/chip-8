@@ -26,7 +26,24 @@ pub fn main() !void {
     const pixelWidth: comptime_int = screenWidth / 64;
     const pixelHeight: comptime_int = screenHeight / 32;
 
-    const keys = [16]KeyboardKey{ KeyboardKey.x, KeyboardKey.one, KeyboardKey.two, KeyboardKey.three, KeyboardKey.q, KeyboardKey.w, KeyboardKey.e, KeyboardKey.a, KeyboardKey.s, KeyboardKey.d, KeyboardKey.z, KeyboardKey.c, KeyboardKey.four, KeyboardKey.r, KeyboardKey.f, KeyboardKey.v };
+    const keys = [16]KeyboardKey{
+        KeyboardKey.x,
+        KeyboardKey.one,
+        KeyboardKey.two,
+        KeyboardKey.three,
+        KeyboardKey.q,
+        KeyboardKey.w,
+        KeyboardKey.e,
+        KeyboardKey.a,
+        KeyboardKey.s,
+        KeyboardKey.d,
+        KeyboardKey.z,
+        KeyboardKey.c,
+        KeyboardKey.four,
+        KeyboardKey.r,
+        KeyboardKey.f,
+        KeyboardKey.v,
+    };
 
     const gpa = std.heap.smp_allocator;
 
@@ -34,7 +51,7 @@ pub fn main() !void {
 
     try chip8.init();
 
-    try loadRom("src/roms/4-flags.ch8", chip8);
+    try loadRom("src/roms/pong-1-player.ch8", chip8);
 
     rl.initWindow(screenWidth, screenHeight, "chip-8 in zig");
     rl.initAudioDevice();
@@ -70,6 +87,4 @@ pub fn main() !void {
             }
         }
     }
-
-    std.debug.print("{any}\n", .{chip8.display});
 }
