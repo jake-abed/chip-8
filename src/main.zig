@@ -48,10 +48,13 @@ pub fn main() !void {
     const gpa = std.heap.smp_allocator;
 
     const chip8 = try gpa.create(cpu);
-
     try chip8.init();
 
-    try loadRom("src/roms/pong-1-player.ch8", chip8);
+    var args = try std.process.argsWithAllocator(gpa);
+    _ = args.skip();
+    const rom = args.next() orelse "";
+    std.debug.print("{s}", .{rom});
+    try loadRom(rom, chip8);
 
     rl.initWindow(screenWidth, screenHeight, "chip-8 in zig");
     rl.initAudioDevice();
@@ -61,7 +64,8 @@ pub fn main() !void {
     const monitorWidth = rl.getMonitorWidth(0);
     const monitorHeight = rl.getMonitorHeight(0);
 
-    rl.setTargetFPS(60);
+    rl.setTargetFPS(144);
+
     rl.setWindowPosition(@divFloor(monitorWidth, 2) - screenWidth / 2, @divFloor(monitorHeight, 2) - screenHeight / 2);
 
     while (!rl.windowShouldClose()) { // Detect window close button or ESC key
@@ -77,11 +81,11 @@ pub fn main() !void {
 
         rl.clearBackground(rl.Color.black);
 
-        for (0.., chip8.display) |y, row| {
-            for (0.., row) |x, pixel| {
+        for (0..32, chip8.display) |y, row| {
+            for (0..64, row) |x, pixel| {
                 if (pixel == 1) {
-                    const posX: i32 = pixelWidth * @as(i32, @intCast(x));
-                    const posY: i32 = pixelWidth * @as(i32, @intCast(y));
+                    const posX: i32 = pixelWidth * (@as(i32, @intCast(x)) - 1);
+                    const posY: i32 = pixelHeight * (@as(i32, @intCast(y)) + 1);
                     rl.drawRectangle(posX, posY, pixelWidth, pixelHeight, rl.Color.white);
                 }
             }

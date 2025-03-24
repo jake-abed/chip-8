@@ -32,11 +32,8 @@ sound_timer: u8,
 // Variable Registers - 16 bytes 0 - 15
 registers: [16]u8,
 
-// Random Number Generator
-rand: std.Random,
-
 pub fn init(self: *Self) !void {
-    self.memory = [_]u8{0} ** 0x050 ++ [_]u8{
+    self.memory = [_]u8{
         0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
         0x20, 0x60, 0x20, 0x20, 0x70, // 1
         0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
@@ -52,8 +49,8 @@ pub fn init(self: *Self) !void {
         0xF0, 0x80, 0x80, 0x80, 0xF0, // C
         0xE0, 0x90, 0x90, 0x90, 0xE0, // D
         0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
-        0xF0, 0x80, 0xF0, 0x80, 0x80, // F
-    } ++ [_]u8{0} ** (4096 - 0x050 - (5 * 16));
+        0xF0, 0x80, 0xF0, 0x80, 0x80, // F,
+    } ++ [_]u8{0} ** (4096 - (5 * 16));
 
     self.display = [_][64]u8{[_]u8{0} ** 64} ** 32;
 
@@ -70,14 +67,16 @@ pub fn init(self: *Self) !void {
     self.sound_timer = 0;
 
     self.registers = [_]u8{0} ** 0x10;
+}
 
+fn genRandomNumber() !u8 {
     var prng = std.Random.DefaultPrng.init(blk: {
         var seed: u64 = undefined;
         try std.posix.getrandom(std.mem.asBytes(&seed));
         break :blk seed;
     });
 
-    self.rand = prng.random();
+    return prng.random().int(u8);
 }
 
 fn incrementPC(self: *Self) void {
@@ -231,7 +230,7 @@ fn decode(self: *Self) void {
             self.ir = @as(u16, nnn + self.registers[0]);
         },
         0xC => {
-            const num = self.rand.int(u8);
+            const num: u8 = genRandomNumber() catch 0;
             self.registers[x] = num & kk;
         },
         0xD => {
@@ -294,7 +293,7 @@ fn decode(self: *Self) void {
                     self.ir += vx;
                 },
                 0x29 => {
-                    self.ir = @intCast(0x50 + vx);
+                    self.ir = @intCast(vx * 5);
                 },
                 0x33 => {
                     self.memory[self.ir] = vx / 100;
