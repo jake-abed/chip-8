@@ -27,22 +27,22 @@ pub fn main() !void {
     const pixelHeight: comptime_int = screenHeight / 32;
 
     const keys = [16]KeyboardKey{
-        KeyboardKey.x,
-        KeyboardKey.one,
-        KeyboardKey.two,
-        KeyboardKey.three,
-        KeyboardKey.q,
-        KeyboardKey.w,
-        KeyboardKey.e,
-        KeyboardKey.a,
-        KeyboardKey.s,
-        KeyboardKey.d,
-        KeyboardKey.z,
-        KeyboardKey.c,
-        KeyboardKey.four,
-        KeyboardKey.r,
-        KeyboardKey.f,
-        KeyboardKey.v,
+        KeyboardKey.x, // 0
+        KeyboardKey.one, // 1
+        KeyboardKey.two, // 2
+        KeyboardKey.three, // 3
+        KeyboardKey.q, // 4
+        KeyboardKey.w, // 5
+        KeyboardKey.e, //6
+        KeyboardKey.a, // 7
+        KeyboardKey.s, // 8
+        KeyboardKey.d, // 9
+        KeyboardKey.z, // a
+        KeyboardKey.c, // b
+        KeyboardKey.four, // c
+        KeyboardKey.r, // d
+        KeyboardKey.f, // e
+        KeyboardKey.v, // f
     };
 
     const gpa = std.heap.smp_allocator;
@@ -68,6 +68,8 @@ pub fn main() !void {
 
     rl.setWindowPosition(@divFloor(monitorWidth, 2) - screenWidth / 2, @divFloor(monitorHeight, 2) - screenHeight / 2);
 
+    var fade: [32][64]rl.Color = [_][64]rl.Color{[_]rl.Color{rl.Color.blank} ** 64} ** 32;
+
     while (!rl.windowShouldClose()) { // Detect window close button or ESC key
         for (0..16) |i| {
             const keyPressed: u8 = if (rl.isKeyDown(keys[i])) 1 else 0;
@@ -81,12 +83,24 @@ pub fn main() !void {
 
         rl.clearBackground(rl.Color.black);
 
+        for (0..32, fade) |y, row| {
+            for (0..64, row) |x, color| {
+                if (color.a > 200) {
+                    const posX: i32 = pixelWidth * (@as(i32, @intCast(x)) - 1);
+                    const posY: i32 = pixelHeight * (@as(i32, @intCast(y)) + 1);
+                    rl.drawRectangle(posX, posY, pixelWidth, pixelHeight, color);
+                    fade[y][x] = rl.colorLerp(color, rl.Color.blank, 0.05);
+                }
+            }
+        }
+
         for (0..32, chip8.display) |y, row| {
             for (0..64, row) |x, pixel| {
                 if (pixel == 1) {
                     const posX: i32 = pixelWidth * (@as(i32, @intCast(x)) - 1);
                     const posY: i32 = pixelHeight * (@as(i32, @intCast(y)) + 1);
                     rl.drawRectangle(posX, posY, pixelWidth, pixelHeight, rl.Color.white);
+                    fade[y][x] = rl.Color.white;
                 }
             }
         }
